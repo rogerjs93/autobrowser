@@ -211,6 +211,8 @@ class AutonomousEngine {
         // Add to brain
         selected.forEach(topic => {
             window.brain.addInterest(topic, 0.25);
+            // Narrate the thought
+            window.monologue?.think('seed', { topic });
         });
 
         console.log(`[Autonomy] 🌱 Seeded: ${selected.join(', ')}`);
@@ -249,6 +251,15 @@ class AutonomousEngine {
 
         console.log(`[Autonomy] 🔍 Explored: ${topic || 'random'}`);
 
+        // Narrate exploration
+        window.monologue?.think('explore', { topic: topic || 'various topics' });
+
+        // Narrate discoveries
+        const recentDiscoveries = window.explorer?.getRecentDiscoveries(1);
+        if (recentDiscoveries?.length > 0) {
+            window.monologue?.think('discovery', { title: recentDiscoveries[0].title });
+        }
+
         // Update UI
         window.app?.updateUI();
         window.app?.renderDiscoveries();
@@ -263,11 +274,22 @@ class AutonomousEngine {
         console.log('[Autonomy] 💤 Auto-dreaming...');
         window.app?.setStatus('Auto-dreaming...', 'active');
 
+        // Narrate dream start
+        window.monologue?.think('dream', {});
+
         const result = await window.dreamer.dream();
 
         if (result.success) {
             console.log(`[Autonomy] 💫 Dream found ${result.session.newConnections.length} connections`);
             window.app?.setStatus(`Dream: ${result.session.newConnections.length} links`, 'idle');
+
+            // Narrate dream connections
+            result.session.newConnections.forEach(conn => {
+                window.monologue?.think('dreamConnection', {
+                    topic1: conn.from,
+                    topic2: conn.to
+                });
+            });
         }
 
         window.app?.updateUI();
@@ -287,6 +309,9 @@ class AutonomousEngine {
             console.log(`[Autonomy] 🧬 Evolved to generation ${result.generation}`);
             window.app?.updateEvolutionUI();
             window.app?.setStatus(`Gen ${result.generation} evolved`, 'idle');
+
+            // Narrate evolution
+            window.monologue?.think('evolve', { gen: result.generation });
         }
     }
 

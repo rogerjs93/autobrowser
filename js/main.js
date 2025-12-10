@@ -229,6 +229,22 @@ class CuriousExplorerApp {
                 }
             };
         }
+
+        // Setup monologue toggle
+        const monologueToggle = document.getElementById('monologue-toggle');
+        if (monologueToggle && window.monologue) {
+            window.monologue.load();
+
+            monologueToggle.addEventListener('change', (e) => {
+                window.monologue.setEnabled(e.target.checked);
+            });
+
+            // Display thoughts in console and optionally UI
+            window.monologue.onThought = (thought) => {
+                // Could add a thought bubble UI here
+                console.log(`[Thought] 💭 ${thought.text}`);
+            };
+        }
     }
 
     /**
