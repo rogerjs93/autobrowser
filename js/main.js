@@ -124,10 +124,77 @@ class CuriousExplorerApp {
                 window.brain.reset();
                 window.memory.reset();
                 window.explorer.reset();
+                window.dreamer?.reset();
+                window.genetics?.reset();
                 this.updateUI();
                 this.viz.updateFromBrain();
             }
         });
+
+        // Dream Replay button
+        document.getElementById('dream-btn')?.addEventListener('click', async () => {
+            if (window.brain.interests.size < 3) {
+                alert('Need at least 3 interests to start dreaming!');
+                return;
+            }
+
+            this.showDreamingOverlay();
+            this.setStatus('Dreaming...', 'active');
+
+            const result = await window.dreamer.dream();
+
+            this.hideDreamingOverlay();
+            this.updateUI();
+            this.viz.updateFromBrain();
+
+            if (result.success) {
+                const session = result.session;
+                this.setStatus(`Dream: ${session.newConnections.length} connections found!`, 'idle');
+                console.log('[App] Dream insights:', session.insights);
+            } else {
+                this.setStatus('Ready', 'idle');
+            }
+
+            setTimeout(() => this.setStatus('Ready', 'idle'), 5000);
+        });
+
+        // Evolve Strategies button
+        document.getElementById('evolve-btn')?.addEventListener('click', () => {
+            this.setStatus('Evolving...', 'active');
+
+            const result = window.genetics.evolve();
+
+            this.updateEvolutionUI();
+
+            if (result) {
+                this.setStatus(`Generation ${result.generation} evolved!`, 'idle');
+                console.log('[App] Best strategy:', result.bestStrategy);
+            }
+
+            setTimeout(() => this.setStatus('Ready', 'idle'), 3000);
+        });
+
+        // Setup dreamer callbacks
+        if (window.dreamer) {
+            window.dreamer.loadDreamLog();
+
+            window.dreamer.onDreamStart = () => {
+                this.setStatus('💤 Dreaming...', 'active');
+            };
+
+            window.dreamer.onConnectionDiscovered = (conn) => {
+                console.log('[App] Dream connection:', conn.from, '↔', conn.to);
+            };
+        }
+
+        // Setup genetics callbacks
+        if (window.genetics) {
+            window.genetics.onNewGeneration = (gen, population) => {
+                this.updateEvolutionUI();
+            };
+
+            this.updateEvolutionUI();
+        }
     }
 
     /**
@@ -387,6 +454,51 @@ class CuriousExplorerApp {
             }
         };
         reader.readAsText(file);
+    }
+
+    /**
+     * Show dreaming overlay animation
+     */
+    showDreamingOverlay() {
+        const overlay = document.createElement('div');
+        overlay.id = 'dreaming-overlay';
+        overlay.className = 'dreaming-overlay';
+        overlay.innerHTML = `
+            <div class="dreaming-content">
+                <div class="moon">🌙</div>
+                <p>Dreaming...</p>
+                <p style="font-size: 0.875rem; color: #a0a0b0; margin-top: 8px;">
+                    Replaying memories and finding hidden connections
+                </p>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+    }
+
+    /**
+     * Hide dreaming overlay
+     */
+    hideDreamingOverlay() {
+        const overlay = document.getElementById('dreaming-overlay');
+        if (overlay) {
+            overlay.style.animation = 'fadeIn 0.3s ease reverse';
+            setTimeout(() => overlay.remove(), 300);
+        }
+    }
+
+    /**
+     * Update evolution UI elements
+     */
+    updateEvolutionUI() {
+        if (!window.genetics) return;
+
+        const stats = window.genetics.getStats();
+
+        const genCount = document.getElementById('generation-count');
+        const bestFitness = document.getElementById('best-fitness');
+
+        if (genCount) genCount.textContent = stats.generation;
+        if (bestFitness) bestFitness.textContent = stats.bestFitness.toFixed(2);
     }
 
     /**

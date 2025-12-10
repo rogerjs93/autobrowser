@@ -1,15 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="A self-evolving web explorer with curiosity-based learning and human-like memory consolidation">
+    <meta name="description"
+        content="A self-evolving web explorer with curiosity-based learning and human-like memory consolidation">
     <title>Curious Explorer | Self-Evolving AI</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
+
 <body>
     <div class="app-container">
         <!-- Header -->
@@ -50,6 +55,10 @@
                     <div class="legend-item">
                         <span class="legend-dot core"></span>
                         <span>Core Interest</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-dot dream"></span>
+                        <span>Dream Link</span>
                     </div>
                 </div>
             </section>
@@ -124,18 +133,35 @@
                     </button>
                 </div>
 
+                <!-- Exotic Algorithms -->
+                <div class="card exotic-card">
+                    <h3>🧬 Exotic Algorithms</h3>
+                    <div class="controls-group">
+                        <button id="dream-btn" class="btn-action btn-dream">
+                            <span>🌙</span> Dream Replay
+                        </button>
+                        <button id="evolve-btn" class="btn-action btn-evolve">
+                            <span>🧬</span> Evolve Strategies
+                        </button>
+                    </div>
+                    <div class="evolution-status">
+                        <span>Generation: <strong id="generation-count">0</strong></span>
+                        <span>Best Fitness: <strong id="best-fitness">0</strong></span>
+                    </div>
+                </div>
+
                 <!-- Controls -->
                 <div class="card controls-card">
                     <h3>Controls</h3>
                     <div class="controls-group">
                         <button id="consolidate-btn" class="btn-action">
-                            <span>🧠</span> Consolidate Memory
+                            <span>🧠</span> Consolidate
                         </button>
                         <button id="export-btn" class="btn-action">
-                            <span>📤</span> Export Brain
+                            <span>📤</span> Export
                         </button>
                         <button id="import-btn" class="btn-action">
-                            <span>📥</span> Import Brain
+                            <span>📥</span> Import
                         </button>
                         <button id="reset-btn" class="btn-action btn-danger">
                             <span>🗑️</span> Reset
@@ -161,7 +187,10 @@
     <script src="js/memory.js"></script>
     <script src="js/explorer.js"></script>
     <script src="js/suggestions.js"></script>
+    <script src="js/dreamer.js"></script>
+    <script src="js/genetics.js"></script>
     <script src="js/visualization.js"></script>
     <script src="js/main.js"></script>
 </body>
+
 </html>
