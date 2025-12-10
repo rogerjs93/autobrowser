@@ -1,9 +1,9 @@
-name: Persist Brain State
+name: Autonomous Brain
 
 on:
   schedule:
-    # Run every 6 hours
-    - cron: '0 */6 * * *'
+    # Run every 3 hours for active exploration
+    - cron: '0 */3 * * *'
   workflow_dispatch:
     # Allow manual trigger
 
@@ -11,7 +11,7 @@ permissions:
   contents: write
 
 jobs:
-  consolidate-and-persist:
+  autonomous-thinking:
     runs-on: ubuntu-latest
     
     steps:
@@ -25,114 +25,367 @@ jobs:
         with:
           node-version: '20'
       
-      - name: Read current brain state
-        id: read-state
-        run: |
-          if [ -f brain-state.json ]; then
-            echo "Brain state exists"
-            cat brain-state.json
-          else
-            echo "No brain state found, creating initial state"
-            echo '{"version":1,"lastUpdate":"'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'","interests":[],"longTermMemory":[],"discoveries":[],"explorationLog":[],"consolidations":0}' > brain-state.json
-          fi
-      
-      - name: Process and consolidate memories
+      - name: Autonomous Exploration & Thinking
         run: |
           node << 'EOF'
           const fs = require('fs');
+          const https = require('https');
           
-          // Read current state
-          let state = JSON.parse(fs.readFileSync('brain-state.json', 'utf8'));
+          // ==========================================
+          // CONFIGURATION
+          // ==========================================
+          const TRENDING_TOPICS = [
+            'artificial intelligence', 'machine learning', 'neural networks',
+            'quantum computing', 'space exploration', 'climate change',
+            'renewable energy', 'biotechnology', 'robotics', 'blockchain',
+            'virtual reality', 'augmented reality', 'cybersecurity',
+            'gene editing', 'nanotechnology', 'fusion energy',
+            'autonomous vehicles', 'brain-computer interface', 'CRISPR',
+            'dark matter', 'exoplanets', 'consciousness', 'emergence',
+            'deep learning', 'GPT', 'transformer architecture', 'AGI',
+            'neuromorphic computing', 'protein folding', 'mRNA technology'
+          ];
           
-          // Read discoveries if exists
-          let discoveries = [];
-          if (fs.existsSync('discoveries.json')) {
-            discoveries = JSON.parse(fs.readFileSync('discoveries.json', 'utf8'));
+          const DECAY_RATE = 0.03;
+          const MIN_WEIGHT = 0.05;
+          const PROMOTION_THRESHOLD = 0.6;
+          
+          // ==========================================
+          // HELPER FUNCTIONS
+          // ==========================================
+          function httpsGet(url) {
+            return new Promise((resolve, reject) => {
+              https.get(url, { headers: { 'User-Agent': 'CuriousExplorer/1.0' } }, (res) => {
+                let data = '';
+                res.on('data', chunk => data += chunk);
+                res.on('end', () => {
+                  try {
+                    resolve(JSON.parse(data));
+                  } catch (e) {
+                    resolve(null);
+                  }
+                });
+              }).on('error', reject);
+            });
           }
           
-          // Consolidation logic
-          const now = new Date().toISOString();
+          async function exploreWikipedia(topic) {
+            console.log(`🔍 Exploring: ${topic}`);
+            try {
+              const url = `https://en.wikipedia.org/api/rest_v1/page/related/${encodeURIComponent(topic)}`;
+              const data = await httpsGet(url);
+              
+              if (data && data.pages) {
+                return data.pages.slice(0, 3).map(p => ({
+                  title: p.title,
+                  description: p.description || p.extract?.slice(0, 150) || '',
+                  source: 'Wikipedia',
+                  url: `https://en.wikipedia.org/wiki/${encodeURIComponent(p.title)}`,
+                  discoveredAt: new Date().toISOString(),
+                  relatedTo: topic
+                }));
+              }
+            } catch (e) {
+              console.log(`  Failed: ${e.message}`);
+            }
+            return [];
+          }
           
-          // Apply decay to existing interests
-          const DECAY_RATE = 0.05;
-          const MIN_WEIGHT = 0.05;
+          async function exploreHackerNews() {
+            console.log('🔍 Checking Hacker News top stories...');
+            try {
+              const topUrl = 'https://hacker-news.firebaseio.com/v0/topstories.json';
+              const ids = await httpsGet(topUrl);
+              
+              if (ids && ids.length > 0) {
+                const discoveries = [];
+                for (let i = 0; i < 3; i++) {
+                  const storyUrl = `https://hacker-news.firebaseio.com/v0/item/${ids[i]}.json`;
+                  const story = await httpsGet(storyUrl);
+                  if (story && story.title) {
+                    discoveries.push({
+                      title: story.title,
+                      description: `Score: ${story.score} | ${story.by}`,
+                      source: 'HackerNews',
+                      url: story.url || `https://news.ycombinator.com/item?id=${story.id}`,
+                      discoveredAt: new Date().toISOString(),
+                      relatedTo: 'tech news'
+                    });
+                  }
+                }
+                return discoveries;
+              }
+            } catch (e) {
+              console.log(`  Failed: ${e.message}`);
+            }
+            return [];
+          }
           
-          state.interests = (state.interests || []).map(interest => {
-            const hoursOld = (Date.now() - new Date(interest.lastActive).getTime()) / (1000 * 60 * 60);
-            const decay = Math.exp(-DECAY_RATE * hoursOld / 24);
+          function extractKeywords(text) {
+            const stopWords = new Set(['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'is', 'it', 'that', 'this', 'with']);
+            return text.toLowerCase()
+              .replace(/[^a-zA-Z\s]/g, '')
+              .split(/\s+/)
+              .filter(word => word.length > 3 && !stopWords.has(word))
+              .slice(0, 5);
+          }
+          
+          function findDreamConnections(interests) {
+            const connections = [];
+            const interestList = Object.values(interests);
             
-            return {
-              ...interest,
-              weight: Math.max(interest.weight * decay, MIN_WEIGHT)
-            };
-          }).filter(i => i.weight > MIN_WEIGHT);
-          
-          // Promote strong interests to long-term memory
-          const PROMOTION_THRESHOLD = 0.6;
-          const promoted = [];
-          
-          state.interests.forEach(interest => {
-            if (interest.weight >= PROMOTION_THRESHOLD) {
-              const existingLTM = state.longTermMemory.find(m => m.topic === interest.topic);
-              if (existingLTM) {
-                existingLTM.weight = Math.max(existingLTM.weight, interest.weight);
-                existingLTM.accessCount = (existingLTM.accessCount || 0) + (interest.accessCount || 0);
-                existingLTM.lastActive = now;
-              } else {
-                state.longTermMemory.push({
-                  ...interest,
-                  promotedAt: now,
-                  memoryType: 'long-term'
-                });
-                promoted.push(interest.topic);
+            for (let i = 0; i < interestList.length; i++) {
+              for (let j = i + 2; j < interestList.length; j++) {
+                const a = interestList[i];
+                const b = interestList[j];
+                
+                // Check for keyword overlap
+                const keywordsA = new Set(a.keywords || extractKeywords(a.topic));
+                const keywordsB = new Set(b.keywords || extractKeywords(b.topic));
+                
+                let overlap = 0;
+                keywordsA.forEach(k => { if (keywordsB.has(k)) overlap++; });
+                
+                if (overlap > 0 || Math.random() > 0.85) {
+                  // Check if connection already exists
+                  const existingConn = (a.connections || []).includes(b.topic);
+                  if (!existingConn) {
+                    connections.push({ from: a.topic, to: b.topic, overlap });
+                  }
+                }
               }
             }
-          });
-          
-          // Add new discoveries
-          if (discoveries.length > 0) {
-            state.discoveries = [
-              ...discoveries,
-              ...(state.discoveries || [])
-            ].slice(0, 200); // Keep last 200
+            
+            return connections.slice(0, 5); // Max 5 new connections per dream
           }
           
-          // Update metadata
-          state.lastUpdate = now;
-          state.consolidations = (state.consolidations || 0) + 1;
-          state.lastConsolidation = {
-            timestamp: now,
-            promoted: promoted.length,
-            interestsCount: state.interests.length,
-            longTermCount: state.longTermMemory.length,
-            discoveriesCount: state.discoveries.length
-          };
+          // ==========================================
+          // MAIN LOGIC
+          // ==========================================
+          async function main() {
+            console.log('🧠 Autonomous Brain Activated');
+            console.log('================================\n');
+            
+            // Load current state
+            let state = { interests: [], longTermMemory: [], discoveries: [], monologue: [] };
+            if (fs.existsSync('brain-state.json')) {
+              state = JSON.parse(fs.readFileSync('brain-state.json', 'utf8'));
+            }
+            
+            const now = new Date().toISOString();
+            const interestsMap = {};
+            (state.interests || []).forEach(i => interestsMap[i.topic] = i);
+            
+            // ---- STEP 1: Seed new interests if needed ----
+            if (Object.keys(interestsMap).length < 5) {
+              console.log('\n🌱 SEEDING NEW INTERESTS');
+              const usedTopics = new Set(Object.keys(interestsMap));
+              const available = TRENDING_TOPICS.filter(t => !usedTopics.has(t));
+              
+              const toSeed = available.sort(() => Math.random() - 0.5).slice(0, 3);
+              toSeed.forEach(topic => {
+                interestsMap[topic] = {
+                  topic,
+                  weight: 0.3,
+                  createdAt: now,
+                  lastActive: now,
+                  accessCount: 1,
+                  connections: [],
+                  keywords: extractKeywords(topic)
+                };
+                console.log(`  ✓ Seeded: ${topic}`);
+                state.monologue.push({
+                  type: 'seed',
+                  text: `I'm curious about ${topic}. Adding it to my interests.`,
+                  timestamp: now
+                });
+              });
+            }
+            
+            // ---- STEP 2: Explore topics ----
+            console.log('\n🔍 EXPLORING');
+            const allDiscoveries = [];
+            
+            // Pick 2 random interests to explore
+            const interestsList = Object.values(interestsMap);
+            const toExplore = interestsList
+              .sort((a, b) => b.weight - a.weight)
+              .slice(0, 3)
+              .map(i => i.topic);
+            
+            for (const topic of toExplore) {
+              const discoveries = await exploreWikipedia(topic);
+              allDiscoveries.push(...discoveries);
+              
+              // Reinforce the explored interest
+              if (interestsMap[topic]) {
+                interestsMap[topic].weight = Math.min(interestsMap[topic].weight + 0.1, 1.0);
+                interestsMap[topic].lastActive = now;
+                interestsMap[topic].accessCount = (interestsMap[topic].accessCount || 0) + 1;
+              }
+              
+              state.monologue.push({
+                type: 'explore',
+                text: `Let me explore ${topic} and see what I can discover.`,
+                timestamp: now
+              });
+              
+              // Add discovered keywords as potential new interests
+              for (const disc of discoveries) {
+                const keywords = extractKeywords(disc.title);
+                keywords.forEach(kw => {
+                  if (!interestsMap[kw] && kw.length > 4) {
+                    interestsMap[kw] = {
+                      topic: kw,
+                      weight: 0.15,
+                      createdAt: now,
+                      lastActive: now,
+                      accessCount: 1,
+                      connections: [topic],
+                      keywords: [kw],
+                      discoveredFrom: disc.title
+                    };
+                  }
+                });
+                
+                state.monologue.push({
+                  type: 'discovery',
+                  text: `Interesting! I found something about ${disc.title}.`,
+                  timestamp: now
+                });
+              }
+            }
+            
+            // Explore Hacker News for tech trends
+            const hnDiscoveries = await exploreHackerNews();
+            allDiscoveries.push(...hnDiscoveries);
+            
+            console.log(`  Found ${allDiscoveries.length} total discoveries`);
+            
+            // ---- STEP 3: Dream - Find hidden connections ----
+            console.log('\n💤 DREAMING');
+            state.monologue.push({
+              type: 'dream',
+              text: 'Entering dream state. Replaying memories to find hidden connections...',
+              timestamp: now
+            });
+            
+            const dreamConnections = findDreamConnections(interestsMap);
+            console.log(`  Found ${dreamConnections.length} dream connections`);
+            
+            dreamConnections.forEach(conn => {
+              // Add bidirectional connections
+              if (interestsMap[conn.from]) {
+                interestsMap[conn.from].connections = interestsMap[conn.from].connections || [];
+                if (!interestsMap[conn.from].connections.includes(conn.to)) {
+                  interestsMap[conn.from].connections.push(conn.to);
+                }
+              }
+              if (interestsMap[conn.to]) {
+                interestsMap[conn.to].connections = interestsMap[conn.to].connections || [];
+                if (!interestsMap[conn.to].connections.includes(conn.from)) {
+                  interestsMap[conn.to].connections.push(conn.from);
+                }
+              }
+              
+              state.monologue.push({
+                type: 'dreamConnection',
+                text: `In my dream, I see a connection between ${conn.from} and ${conn.to}.`,
+                timestamp: now
+              });
+              
+              console.log(`  ✓ Connected: ${conn.from} ↔ ${conn.to}`);
+            });
+            
+            // ---- STEP 4: Apply decay ----
+            console.log('\n⏳ APPLYING DECAY');
+            Object.values(interestsMap).forEach(interest => {
+              const hoursOld = (Date.now() - new Date(interest.lastActive).getTime()) / (1000 * 60 * 60);
+              const decay = Math.exp(-DECAY_RATE * hoursOld / 24);
+              interest.weight = Math.max(interest.weight * decay, MIN_WEIGHT);
+            });
+            
+            // Remove very low weight interests
+            const beforeCount = Object.keys(interestsMap).length;
+            Object.keys(interestsMap).forEach(topic => {
+              if (interestsMap[topic].weight < MIN_WEIGHT) {
+                delete interestsMap[topic];
+              }
+            });
+            const afterCount = Object.keys(interestsMap).length;
+            console.log(`  Forgot ${beforeCount - afterCount} weak interests`);
+            
+            // ---- STEP 5: Promote to long-term memory ----
+            console.log('\n📚 PROMOTING TO LONG-TERM MEMORY');
+            const promoted = [];
+            Object.values(interestsMap).forEach(interest => {
+              if (interest.weight >= PROMOTION_THRESHOLD) {
+                const existing = (state.longTermMemory || []).find(m => m.topic === interest.topic);
+                if (!existing) {
+                  state.longTermMemory = state.longTermMemory || [];
+                  state.longTermMemory.push({
+                    ...interest,
+                    promotedAt: now,
+                    memoryType: 'long-term'
+                  });
+                  promoted.push(interest.topic);
+                  console.log(`  ✓ Promoted: ${interest.topic}`);
+                }
+              }
+            });
+            
+            // ---- STEP 6: Update state ----
+            state.interests = Object.values(interestsMap);
+            state.discoveries = [
+              ...allDiscoveries,
+              ...(state.discoveries || [])
+            ].slice(0, 500);
+            state.monologue = (state.monologue || []).slice(-100);
+            state.lastUpdate = now;
+            state.autonomousRuns = (state.autonomousRuns || 0) + 1;
+            state.lastAutonomousRun = {
+              timestamp: now,
+              explored: toExplore.length,
+              discoveries: allDiscoveries.length,
+              dreamConnections: dreamConnections.length,
+              promoted: promoted.length,
+              interestsCount: state.interests.length,
+              longTermCount: (state.longTermMemory || []).length
+            };
+            
+            // Final monologue
+            state.monologue.push({
+              type: 'thinking',
+              text: `Session complete. I now have ${state.interests.length} interests and found ${allDiscoveries.length} new discoveries.`,
+              timestamp: now
+            });
+            
+            // Write state
+            fs.writeFileSync('brain-state.json', JSON.stringify(state, null, 2));
+            
+            console.log('\n================================');
+            console.log('🧠 Autonomous Session Complete');
+            console.log(`  Interests: ${state.interests.length}`);
+            console.log(`  Long-term: ${(state.longTermMemory || []).length}`);
+            console.log(`  Discoveries: ${state.discoveries.length}`);
+            console.log(`  Monologue entries: ${state.monologue.length}`);
+            console.log(`  Autonomous runs: ${state.autonomousRuns}`);
+          }
           
-          // Write updated state
-          fs.writeFileSync('brain-state.json', JSON.stringify(state, null, 2));
-          
-          console.log('Consolidation complete:');
-          console.log(`- Interests: ${state.interests.length}`);
-          console.log(`- Long-term memories: ${state.longTermMemory.length}`);
-          console.log(`- Promoted: ${promoted.length}`);
-          console.log(`- Discoveries: ${state.discoveries.length}`);
+          main().catch(console.error);
           EOF
-      
-      - name: Clear processed discoveries
-        run: |
-          echo '[]' > discoveries.json
       
       - name: Commit and push changes
         run: |
           git config user.name "Curious Explorer Bot"
           git config user.email "curious-explorer@github.actions"
           
-          git add brain-state.json discoveries.json
+          git add brain-state.json
           
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else
-            git commit -m "🧠 Memory consolidation - $(date -u +"%Y-%m-%d %H:%M UTC")"
+            git commit -m "🤖 Autonomous thinking - $(date -u +'%Y-%m-%d %H:%M UTC')"
             git push
-            echo "Brain state persisted successfully!"
+            echo "Brain evolved successfully!"
           fi
