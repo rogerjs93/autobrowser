@@ -1,0 +1,138 @@
+name: Persist Brain State
+
+on:
+  schedule:
+    # Run every 6 hours
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+    # Allow manual trigger
+
+permissions:
+  contents: write
+
+jobs:
+  consolidate-and-persist:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.BRAIN_TOKEN }}
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Read current brain state
+        id: read-state
+        run: |
+          if [ -f brain-state.json ]; then
+            echo "Brain state exists"
+            cat brain-state.json
+          else
+            echo "No brain state found, creating initial state"
+            echo '{"version":1,"lastUpdate":"'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'","interests":[],"longTermMemory":[],"discoveries":[],"explorationLog":[],"consolidations":0}' > brain-state.json
+          fi
+      
+      - name: Process and consolidate memories
+        run: |
+          node << 'EOF'
+          const fs = require('fs');
+          
+          // Read current state
+          let state = JSON.parse(fs.readFileSync('brain-state.json', 'utf8'));
+          
+          // Read discoveries if exists
+          let discoveries = [];
+          if (fs.existsSync('discoveries.json')) {
+            discoveries = JSON.parse(fs.readFileSync('discoveries.json', 'utf8'));
+          }
+          
+          // Consolidation logic
+          const now = new Date().toISOString();
+          
+          // Apply decay to existing interests
+          const DECAY_RATE = 0.05;
+          const MIN_WEIGHT = 0.05;
+          
+          state.interests = (state.interests || []).map(interest => {
+            const hoursOld = (Date.now() - new Date(interest.lastActive).getTime()) / (1000 * 60 * 60);
+            const decay = Math.exp(-DECAY_RATE * hoursOld / 24);
+            
+            return {
+              ...interest,
+              weight: Math.max(interest.weight * decay, MIN_WEIGHT)
+            };
+          }).filter(i => i.weight > MIN_WEIGHT);
+          
+          // Promote strong interests to long-term memory
+          const PROMOTION_THRESHOLD = 0.6;
+          const promoted = [];
+          
+          state.interests.forEach(interest => {
+            if (interest.weight >= PROMOTION_THRESHOLD) {
+              const existingLTM = state.longTermMemory.find(m => m.topic === interest.topic);
+              if (existingLTM) {
+                existingLTM.weight = Math.max(existingLTM.weight, interest.weight);
+                existingLTM.accessCount = (existingLTM.accessCount || 0) + (interest.accessCount || 0);
+                existingLTM.lastActive = now;
+              } else {
+                state.longTermMemory.push({
+                  ...interest,
+                  promotedAt: now,
+                  memoryType: 'long-term'
+                });
+                promoted.push(interest.topic);
+              }
+            }
+          });
+          
+          // Add new discoveries
+          if (discoveries.length > 0) {
+            state.discoveries = [
+              ...discoveries,
+              ...(state.discoveries || [])
+            ].slice(0, 200); // Keep last 200
+          }
+          
+          // Update metadata
+          state.lastUpdate = now;
+          state.consolidations = (state.consolidations || 0) + 1;
+          state.lastConsolidation = {
+            timestamp: now,
+            promoted: promoted.length,
+            interestsCount: state.interests.length,
+            longTermCount: state.longTermMemory.length,
+            discoveriesCount: state.discoveries.length
+          };
+          
+          // Write updated state
+          fs.writeFileSync('brain-state.json', JSON.stringify(state, null, 2));
+          
+          console.log('Consolidation complete:');
+          console.log(`- Interests: ${state.interests.length}`);
+          console.log(`- Long-term memories: ${state.longTermMemory.length}`);
+          console.log(`- Promoted: ${promoted.length}`);
+          console.log(`- Discoveries: ${state.discoveries.length}`);
+          EOF
+      
+      - name: Clear processed discoveries
+        run: |
+          echo '[]' > discoveries.json
+      
+      - name: Commit and push changes
+        run: |
+          git config user.name "Curious Explorer Bot"
+          git config user.email "curious-explorer@github.actions"
+          
+          git add brain-state.json discoveries.json
+          
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "🧠 Memory consolidation - $(date -u +"%Y-%m-%d %H:%M UTC")"
+            git push
+            echo "Brain state persisted successfully!"
+          fi

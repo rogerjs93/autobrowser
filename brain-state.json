@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "lastUpdate": "2025-12-10T11:21:00Z",
+  "consolidations": 0,
+  "interests": [],
+  "longTermMemory": [],
+  "topicClusters": [],
+  "discoveries": [],
+  "explorationLog": [],
+  "stats": {
+    "totalExplorations": 0,
+    "totalDiscoveries": 0,
+    "totalConsolidations": 0
+  },
+  "metadata": {
+    "createdAt": "2025-12-10T11:21:00Z",
+    "description": "Curious Explorer - Self-Evolving Brain State"
+  }
+}

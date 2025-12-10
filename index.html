@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="A self-evolving web explorer with curiosity-based learning and human-like memory consolidation">
+    <title>Curious Explorer | Self-Evolving AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <div class="logo-icon">
+                    <div class="neuron"></div>
+                </div>
+                <h1>Curious Explorer</h1>
+            </div>
+            <div class="status-indicator">
+                <span class="status-dot"></span>
+                <span class="status-text">Exploring...</span>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Left Panel: Visualization -->
+            <section class="visualization-panel">
+                <div class="panel-header">
+                    <h2>Neural Map</h2>
+                    <div class="view-toggle">
+                        <button class="view-btn active" data-view="network">Network</button>
+                        <button class="view-btn" data-view="constellation">Constellation</button>
+                    </div>
+                </div>
+                <canvas id="brain-canvas"></canvas>
+                <div class="legend">
+                    <div class="legend-item">
+                        <span class="legend-dot short-term"></span>
+                        <span>Short-term</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-dot long-term"></span>
+                        <span>Long-term</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-dot core"></span>
+                        <span>Core Interest</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right Panel: Controls & Info -->
+            <aside class="control-panel">
+                <!-- Interest Input -->
+                <div class="card interest-input-card">
+                    <h3>Feed Your Curiosity</h3>
+                    <div class="input-group">
+                        <input type="text" id="topic-input" placeholder="Enter a topic..." autocomplete="off">
+                        <button id="add-interest-btn" class="btn-primary">
+                            <span class="btn-icon">+</span>
+                        </button>
+                    </div>
+                    <div class="quick-topics">
+                        <span class="quick-topic" data-topic="artificial intelligence">AI</span>
+                        <span class="quick-topic" data-topic="space exploration">Space</span>
+                        <span class="quick-topic" data-topic="quantum physics">Quantum</span>
+                        <span class="quick-topic" data-topic="neuroscience">Neuro</span>
+                        <span class="quick-topic" data-topic="philosophy">Philosophy</span>
+                    </div>
+                </div>
+
+                <!-- Memory Stats -->
+                <div class="card memory-stats-card">
+                    <h3>Memory Status</h3>
+                    <div class="stats-grid">
+                        <div class="stat">
+                            <span class="stat-value" id="short-term-count">0</span>
+                            <span class="stat-label">Short-term</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value" id="long-term-count">0</span>
+                            <span class="stat-label">Long-term</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value" id="connections-count">0</span>
+                            <span class="stat-label">Connections</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value" id="discoveries-count">0</span>
+                            <span class="stat-label">Discoveries</span>
+                        </div>
+                    </div>
+                    <div class="memory-bar">
+                        <div class="memory-progress" id="memory-progress"></div>
+                    </div>
+                    <span class="memory-label">Short-term capacity: <span id="memory-percentage">0</span>%</span>
+                </div>
+
+                <!-- Suggestions -->
+                <div class="card suggestions-card">
+                    <h3>Suggestions</h3>
+                    <div class="suggestions-list" id="suggestions-list">
+                        <div class="suggestion-placeholder">
+                            Add interests to see suggestions...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Discoveries Feed -->
+                <div class="card discoveries-card">
+                    <h3>Recent Discoveries</h3>
+                    <div class="discoveries-list" id="discoveries-list">
+                        <div class="discovery-placeholder">
+                            Discoveries will appear here...
+                        </div>
+                    </div>
+                    <button id="explore-btn" class="btn-secondary">
+                        <span class="explore-icon">🔍</span> Explore Now
+                    </button>
+                </div>
+
+                <!-- Controls -->
+                <div class="card controls-card">
+                    <h3>Controls</h3>
+                    <div class="controls-group">
+                        <button id="consolidate-btn" class="btn-action">
+                            <span>🧠</span> Consolidate Memory
+                        </button>
+                        <button id="export-btn" class="btn-action">
+                            <span>📤</span> Export Brain
+                        </button>
+                        <button id="import-btn" class="btn-action">
+                            <span>📥</span> Import Brain
+                        </button>
+                        <button id="reset-btn" class="btn-action btn-danger">
+                            <span>🗑️</span> Reset
+                        </button>
+                    </div>
+                    <input type="file" id="import-file" accept=".json" hidden>
+                </div>
+            </aside>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>Self-Evolving Algorithm • Memory consolidates every 6 hours</p>
+            <p class="last-sync">Last sync: <span id="last-sync-time">Never</span></p>
+        </footer>
+    </div>
+
+    <!-- Tooltip -->
+    <div id="tooltip" class="tooltip hidden"></div>
+
+    <!-- Scripts -->
+    <script src="js/brain.js"></script>
+    <script src="js/memory.js"></script>
+    <script src="js/explorer.js"></script>
+    <script src="js/suggestions.js"></script>
+    <script src="js/visualization.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
