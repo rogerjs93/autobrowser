@@ -195,6 +195,40 @@ class CuriousExplorerApp {
 
             this.updateEvolutionUI();
         }
+
+        // Setup autonomy toggle
+        const autonomyToggle = document.getElementById('autonomy-toggle');
+        if (autonomyToggle && window.autonomy) {
+            autonomyToggle.addEventListener('change', (e) => {
+                if (e.target.checked) {
+                    window.autonomy.start();
+                    this.setStatus('🤖 Autonomous', 'active');
+                } else {
+                    window.autonomy.stop();
+                    this.setStatus('Manual mode', 'idle');
+                }
+            });
+
+            // Set initial state
+            if (autonomyToggle.checked) {
+                window.autonomy.start();
+            }
+
+            // Listen for autonomy actions
+            window.autonomy.onAction = (action, result) => {
+                console.log(`[App] Autonomy ${action}:`, result);
+                this.updateUI();
+                this.renderDiscoveries();
+            };
+
+            window.autonomy.onStatusChange = (status) => {
+                if (status === 'running') {
+                    this.setStatus('🤖 Autonomous', 'active');
+                } else {
+                    this.setStatus('Manual mode', 'idle');
+                }
+            };
+        }
     }
 
     /**
